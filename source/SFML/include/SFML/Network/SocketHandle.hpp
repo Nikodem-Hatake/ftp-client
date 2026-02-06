@@ -29,16 +29,24 @@
 ////////////////////////////////////////////////////////////
 #include <SFML/Config.hpp>
 
+#if defined(SFML_SYSTEM_WINDOWS)
+#include <basetsd.h>
+#endif
 
-////////////////////////////////////////////////////////////
-// Portable import / export macros
-////////////////////////////////////////////////////////////
-#if defined(SFML_NETWORK_EXPORTS)
 
-#define SFML_NETWORK_API SFML_API_EXPORT
+namespace sf
+{
+////////////////////////////////////////////////////////////
+// Low-level socket handle type, specific to each platform
+////////////////////////////////////////////////////////////
+#if defined(SFML_SYSTEM_WINDOWS)
+
+using SocketHandle = UINT_PTR;
 
 #else
 
-#define SFML_NETWORK_API SFML_API_IMPORT
+using SocketHandle = int;
 
 #endif
+
+} // namespace sf
