@@ -664,9 +664,10 @@ void ConnectedState::getLocalElements()
 void ConnectedState::renameSelectedElement()
 {
 	if(this->selectedElementIterator == this->ftpElementsIteratorEnd
-	|| !this->isSelectedElementAnFtpElement)
+	|| !this->isSelectedElementAnFtpElement 
+	|| this->checkIfElementIsFtpFolder(this->selectedElementIterator->getString()))
 	{
-		this->createErrorMessageBox("Not selected any ftp file/folder to rename");
+		this->createErrorMessageBox("Not selected any ftp file to rename");
 		return;
 	}
 
