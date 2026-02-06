@@ -22,43 +22,56 @@
 //
 ////////////////////////////////////////////////////////////
 
+#pragma once
+
 ////////////////////////////////////////////////////////////
 // Headers
 ////////////////////////////////////////////////////////////
-#include <SFML/System/String.hpp> // NOLINT(misc-header-include-cycle)
+#include <SFML/System/Export.hpp>
 
-#include <iterator>
+#include <iosfwd>
 
 
 namespace sf
 {
 ////////////////////////////////////////////////////////////
-template <typename T>
-String String::fromUtf8(T begin, T end)
-{
-    String string;
-    Utf8::toUtf32(begin, end, std::back_inserter(string.m_string));
-    return string;
-}
-
-
+/// \brief Standard stream used by SFML to output warnings and errors
+///
 ////////////////////////////////////////////////////////////
-template <typename T>
-String String::fromUtf16(T begin, T end)
-{
-    String string;
-    Utf16::toUtf32(begin, end, std::back_inserter(string.m_string));
-    return string;
-}
-
-
-////////////////////////////////////////////////////////////
-template <typename T>
-String String::fromUtf32(T begin, T end)
-{
-    String string;
-    string.m_string.assign(begin, end);
-    return string;
-}
+[[nodiscard]] SFML_SYSTEM_API std::ostream& err();
 
 } // namespace sf
+
+
+////////////////////////////////////////////////////////////
+/// \fn sf::err
+/// \ingroup system
+///
+/// By default, `sf::err()` outputs to the same location as `std::cerr`,
+/// (-> the stderr descriptor) which is the console if there's
+/// one available.
+///
+/// It is a standard `std::ostream` instance, so it supports all the
+/// insertion operations defined by the STL
+/// (`operator<<`, manipulators, etc.).
+///
+/// `sf::err()` can be redirected to write to another output, independently
+/// of `std::cerr`, by using the `rdbuf()` function provided by the
+/// `std::ostream` class.
+///
+/// Example:
+/// \code
+/// // Redirect to a file
+/// std::ofstream file("sfml-log.txt");
+/// std::streambuf* previous = sf::err().rdbuf(file.rdbuf());
+///
+/// // Redirect to nothing
+/// sf::err().rdbuf(nullptr);
+///
+/// // Restore the original output
+/// sf::err().rdbuf(previous);
+/// \endcode
+///
+/// \return Reference to `std::ostream` representing the SFML error stream
+///
+////////////////////////////////////////////////////////////
