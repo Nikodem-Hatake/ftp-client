@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="ftp client.vcxproj" Id="4118cb68-6841-42ad-a3db-2a79a74ac859" />
+</Solution>
