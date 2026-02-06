@@ -84,4 +84,9 @@ Properties > Linker > System
 And changing Subsystem from SUBSYSTEM:WINDOWS to SUBSYSTEM:CONSOLE.
 <br>
 <br>
+All textures are made by me using <a href="https://pixieditor.net">pixiEditor</a>
+<br>
+<a href="https://www.dafont.com/pixel-unicode.font">font</a>
+<br>
+<br>
 Have fun :).
