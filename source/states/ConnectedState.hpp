@@ -49,9 +49,10 @@ class ConnectedState : public State
 	{
 		sf::Text text;
 		std::list <std::string>::iterator iterator;
-		VisibleElement(const sf::Text & text) : text(text), iterator()
+		VisibleElement(sf::Font & font, const char * string,
+		const std::uint32_t & fontSize) : text(font, string, fontSize), iterator()
 		{
-			
+			this->text.setFillColor(sf::Color(0, 0, 0));
 		}
 	};
 

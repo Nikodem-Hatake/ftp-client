@@ -4,7 +4,7 @@
 #include "../gui/gui.hpp"
 #include "ConnectedState.hpp"
 
-#define DEBUG_VERSION true
+#define DEBUG_VERSION false
 
 #if DEBUG_VERSION
 #include <iostream>
@@ -480,10 +480,8 @@ void ConnectedState::createVisibleTexts()
 	this->localVisibleElements.reserve(MAX_NUMBER_OF_ELEMENTS_PER_PAGE);
 	for(std::int32_t i = 0; i < MAX_NUMBER_OF_ELEMENTS_PER_PAGE; ++i)
 	{
-		this->ftpVisibleElements.emplace_back(sf::Text(this->font, "", fontSize));
-		this->ftpVisibleElements.back().text.setFillColor(sf::Color(0, 0, 0));
-		this->localVisibleElements.emplace_back(sf::Text(this->font, "", fontSize));
-		this->localVisibleElements.back().text.setFillColor(sf::Color(0, 0, 0));
+		this->ftpVisibleElements.emplace_back(this->font, "", fontSize);
+		this->localVisibleElements.emplace_back(this->font, "", fontSize);
 	}
 }
 
