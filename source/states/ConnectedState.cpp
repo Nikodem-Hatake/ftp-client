@@ -4,7 +4,7 @@
 #include "../gui/gui.hpp"
 #include "ConnectedState.hpp"
 
-#define DEBUG_VERSION false
+#define DEBUG_VERSION true
 
 #if DEBUG_VERSION
 #include <iostream>
@@ -12,7 +12,7 @@
 
 void ConnectedState::changeCurrentDirectory()
 {
-	if(this->selectedElementIterator == this->ftpElementsIteratorEnd)
+	if(this->selectedElementIterator == this->ftpVisibleElements.end())
 	{
 		this->createErrorMessageBox("Not selected any directory to enter");
 		return;
@@ -20,14 +20,14 @@ void ConnectedState::changeCurrentDirectory()
 
 	if(this->isSelectedElementAnFtpElement)
 	{
-		if(!this->checkIfElementIsFtpFolder(this->selectedElementIterator->getString()))
+		if(!this->checkIfElementIsFtpFolder(*this->selectedElementIterator->iterator))
 		{
 			this->createErrorMessageBox("You can only enter folders");
 			return;
 		}
 
 		sf::Ftp::Response response = this->ftpConenction.changeDirectory
-		(this->selectedElementIterator->getString());
+		(*this->selectedElementIterator->iterator);
 		if(!response.isOk())
 		{
 #if DEBUG_VERSION
@@ -37,12 +37,12 @@ void ConnectedState::changeCurrentDirectory()
 			return;
 		}
 		this->getFtpElements();
-		this->setFtpElementsIconsAndPositions();
+		this->setFtpVisibleElementsIconsAndPositions();
 	}
 	else
 	{
 		std::string newDirectoryWithSeparator(DIRECTORY_SEPARATOR 
-		+ this->selectedElementIterator->getString());
+		+ (* this->selectedElementIterator->iterator));
 		std::filesystem::path newPath(std::filesystem::current_path().string() 
 		+ newDirectoryWithSeparator);
 		if(!std::filesystem::is_directory(newPath))
@@ -58,7 +58,7 @@ void ConnectedState::changeCurrentDirectory()
 
 		std::filesystem::current_path(newPath);
 		this->getLocalElements();
-		this->setLocalElementsIconsAndPositions();
+		this->setLocalVisibleElementsIconsAndPositions();
 	}
 	this->resetSelectedElementIterator();
 }
@@ -79,7 +79,7 @@ void ConnectedState::changeCurrentDirectoryToInputedOne()
 
 	std::filesystem::current_path(newPath);
 	this->getLocalElements();
-	this->setLocalElementsIconsAndPositions();
+	this->setLocalVisibleElementsIconsAndPositions();
 	this->resetSelectedElementIterator();
 }
 
@@ -97,7 +97,7 @@ void ConnectedState::changeFtpPageToLeft()
 	{
 		--this->ftpElementsIterator;
 	}
-	this->setFtpElementsIconsAndPositions();
+	this->setFtpVisibleElementsIconsAndPositions();
 	this->resetSelectedElementIterator();
 }
 
@@ -117,7 +117,7 @@ void ConnectedState::changeFtpPageToRight()
 	{
 		++this->ftpElementsIterator;
 	}
-	this->setFtpElementsIconsAndPositions();
+	this->setFtpVisibleElementsIconsAndPositions();
 	this->resetSelectedElementIterator();
 }
 
@@ -135,7 +135,7 @@ void ConnectedState::changeLocalPageToLeft()
 	{
 		--this->localElementsIterator;
 	}
-	this->setLocalElementsIconsAndPositions();
+	this->setLocalVisibleElementsIconsAndPositions();
 	this->resetSelectedElementIterator();
 }
 
@@ -155,7 +155,7 @@ void ConnectedState::changeLocalPageToRight()
 	{
 		++this->localElementsIterator;
 	}
-	this->setLocalElementsIconsAndPositions();
+	this->setLocalVisibleElementsIconsAndPositions();
 	this->resetSelectedElementIterator();
 }
 
@@ -232,27 +232,31 @@ const bool ConnectedState::checkIfElementIsFtpFolder(const std::string & element
 
 void ConnectedState::checkIfElementIsSelected(sf::Vector2f & mousePosition)
 {
-	std::list <sf::Text>::iterator it;
-	sf::Vector2f previousPosition = this->selectedElementBackground.getPosition();
+	std::list <std::string>::iterator it;
+	std::vector <VisibleElement>::iterator iteratorToVisibleElement 
+	= this->localVisibleElements.begin();
+	const sf::Vector2f previousPosition = this->selectedElementBackground.getPosition();
 
-	for(it = this->localElementsIterator; it != this->localElementsIteratorEnd; ++it)
+	for(it = this->localElementsIterator, iteratorToVisibleElement = this->localVisibleElements.begin(); 
+	it != this->localElementsIteratorEnd; ++it, ++iteratorToVisibleElement)
 	{
-		this->selectedElementBackground.setPosition(it->getPosition());
+		this->selectedElementBackground.setPosition(iteratorToVisibleElement->text.getPosition());
 		if(this->selectedElementBackground.getGlobalBounds().contains(mousePosition))
 		{
 			this->isSelectedElementAnFtpElement = false;
-			this->selectedElementIterator = it;
+			this->selectedElementIterator = iteratorToVisibleElement;
 			return;
 		}
 	}
 
-	for(it = this->ftpElementsIterator; it != this->ftpElementsIteratorEnd; ++it)
+	for(it = this->ftpElementsIterator, iteratorToVisibleElement = this->ftpVisibleElements.begin(); 
+	it != this->ftpElementsIteratorEnd; ++it, ++iteratorToVisibleElement)
 	{
-		this->selectedElementBackground.setPosition(it->getPosition());
+		this->selectedElementBackground.setPosition(iteratorToVisibleElement->text.getPosition());
 		if(this->selectedElementBackground.getGlobalBounds().contains(mousePosition))
 		{
 			this->isSelectedElementAnFtpElement = true;
-			this->selectedElementIterator = it;
+			this->selectedElementIterator = iteratorToVisibleElement;
 			return;
 		}
 	}
@@ -262,12 +266,12 @@ void ConnectedState::checkIfElementIsSelected(sf::Vector2f & mousePosition)
 ConnectedState::ConnectedState(sf::RenderWindow & window, sf::Font & font,
 std::stack <std::unique_ptr <State>> & states, char32_t & keyPressedRef, sf::Ftp & ftpConnectionRef)
 : State(window, font, states), ftpConenction(ftpConnectionRef), keyPressed(keyPressedRef),
-texts(font, font, font, font),
+texts({font, font, font, font}),
 inputBox(gui::calculatePercentageVector(window.getSize(), {38.f, 10.f}),
 gui::calculatePercentageVector(window.getSize(), {3.f, 85.f}),
 gui::calculateOutlineThickness(window.getSize(), 1.f), sf::Color(48, 48, 48),
 sf::Color(128, 128, 128), sf::Color(255, 255, 255), font, 
-gui::calculateFontSize(window.getSize(), 16), 40)
+gui::calculateFontSize(window.getSize(), 16), MAX_CHARACTERS_FOR_ELEMENT)
 {
 	//Remove compiler warnings.
 	void(this->fileIcon.loadFromFile("resources/icons/file.png"));
@@ -279,12 +283,13 @@ gui::calculateFontSize(window.getSize(), 16), 40)
 	this->createButtons();
 	this->createLines();
 	this->createTexts();
+	this->createVisibleTexts();
 
 	this->getFtpElements();
-	this->setFtpElementsIconsAndPositions();
+	this->setFtpVisibleElementsIconsAndPositions();
 
 	this->getLocalElements();
-	this->setLocalElementsIconsAndPositions();
+	this->setLocalVisibleElementsIconsAndPositions();
 	this->setIconsPositionsAndSizes();
 }
 
@@ -300,7 +305,7 @@ void ConnectedState::comeBackToFtpParentDirectory()
 		return;
 	}
 	this->getFtpElements();
-	this->setFtpElementsIconsAndPositions();
+	this->setFtpVisibleElementsIconsAndPositions();
 	this->resetSelectedElementIterator();
 }
 
@@ -315,7 +320,7 @@ void ConnectedState::comeBackToLocalParentDirectory()
 
 	std::filesystem::current_path(newPath);
 	this->getLocalElements();
-	this->setLocalElementsIconsAndPositions();
+	this->setLocalVisibleElementsIconsAndPositions();
 	this->resetSelectedElementIterator();
 }
 
@@ -441,10 +446,8 @@ void ConnectedState::createNewDirectory()
 		return;
 	}
 	
-	this->ftpElements.emplace_back(this->font, directoryName,
-	gui::calculateFontSize(this->window.getSize(), 16));
-	this->ftpElements.back().setFillColor(sf::Color(0, 0, 0));
-	this->setFtpElementsIconsAndPositions();
+	this->ftpElements.emplace_back(directoryName);
+	this->setFtpVisibleElementsIconsAndPositions();
 	this->setCurrentFtpPageText();
 }
 
@@ -470,40 +473,54 @@ void ConnectedState::createTexts()
 	(this->window.getSize(), {40.f, 0.f}));
 }
 
+void ConnectedState::createVisibleTexts()
+{
+	const std::uint32_t fontSize = gui::calculateFontSize(this->window.getSize(), 16);
+	this->ftpVisibleElements.reserve(MAX_NUMBER_OF_ELEMENTS_PER_PAGE);
+	this->localVisibleElements.reserve(MAX_NUMBER_OF_ELEMENTS_PER_PAGE);
+	for(std::int32_t i = 0; i < MAX_NUMBER_OF_ELEMENTS_PER_PAGE; ++i)
+	{
+		this->ftpVisibleElements.emplace_back(sf::Text(this->font, "", fontSize));
+		this->ftpVisibleElements.back().text.setFillColor(sf::Color(0, 0, 0));
+		this->localVisibleElements.emplace_back(sf::Text(this->font, "", fontSize));
+		this->localVisibleElements.back().text.setFillColor(sf::Color(0, 0, 0));
+	}
+}
+
 void ConnectedState::deleteSelectedElement()
 {
-	if(this->selectedElementIterator == this->ftpElementsIteratorEnd
+	if(this->selectedElementIterator == this->ftpVisibleElements.end()
 	|| !this->isSelectedElementAnFtpElement)
 	{
 		this->createErrorMessageBox("Not selected any ftp file/directory to delete");
 		return;
 	}
 
-	if(this->checkIfElementIsFtpFolder(this->selectedElementIterator->getString()))
+	if(this->checkIfElementIsFtpFolder(* this->selectedElementIterator->iterator))
 	{
 		sf::Ftp::Response response = this->ftpConenction.deleteDirectory
-		(this->selectedElementIterator->getString());
+		(* this->selectedElementIterator->iterator);
 		if(!response.isOk())
 		{
 #if DEBUG_VERSION
 			std::cout << response.getMessage() << '\n';
 #endif
 			this->createErrorMessageBox("Can't delete directory named: " +
-			this->selectedElementIterator->getString());
+			(* this->selectedElementIterator->iterator));
 			return;
 		}
 	}
 	else
 	{
 		sf::Ftp::Response response = this->ftpConenction.deleteFile
-		(this->selectedElementIterator->getString().toAnsiString());
+		(* this->selectedElementIterator->iterator);
 		if(!response.isOk())
 		{
 #if DEBUG_VERSION
 			std::cout << response.getMessage() << '\n';
 #endif
 			this->createErrorMessageBox("Can't delete file named: " +
-			this->selectedElementIterator->getString());
+			(* this->selectedElementIterator->iterator));
 			return;
 		}
 	}
@@ -520,28 +537,28 @@ void ConnectedState::deleteSelectedElement()
 		this->changeFtpPageToLeft();
 	}
 
-	this->ftpElements.erase(selectedElementIterator);
-	this->setFtpElementsIconsAndPositions();
+	this->ftpElements.erase(selectedElementIterator->iterator);
+	this->setFtpVisibleElementsIconsAndPositions();
 	this->setCurrentFtpPageText();
 	this->resetSelectedElementIterator();
 }
 
 void ConnectedState::downloadSelectedElement()
 {
-	if(this->selectedElementIterator == this->ftpElementsIteratorEnd
+	if(this->selectedElementIterator == this->ftpVisibleElements.end()
 	|| !this->isSelectedElementAnFtpElement)
 	{
 		this->createErrorMessageBox("Not selected any ftp file to download");
 		return;
 	}
-	else if(this->checkIfElementIsFtpFolder(selectedElementIterator->getString()))
+	else if(this->checkIfElementIsFtpFolder(* selectedElementIterator->iterator))
 	{
 		this->createErrorMessageBox("Can't download directory, only a single file at once");
 		return;
 	}
 
 	sf::Ftp::Response response = this->ftpConenction.download
-	(this->selectedElementIterator->getString().toAnsiString(), std::filesystem::current_path());
+	(* this->selectedElementIterator->iterator, std::filesystem::current_path());
 	if(!response.isOk())
 	{
 #if DEBUG_VERSION
@@ -551,13 +568,11 @@ void ConnectedState::downloadSelectedElement()
 		return;
 	}
 
-	this->localElements.emplace_back(this->font, this->selectedElementIterator->getString(),
-	gui::calculateFontSize(this->window.getSize(), 16));
-	this->localElements.back().setFillColor(sf::Color(0, 0, 0));
+	this->localElements.emplace_back(* this->selectedElementIterator->iterator);
 	if(this->localElementsPageNumber == static_cast <std::uint32_t>(std::ceil
 	(static_cast <double>(this->ftpElements.size()) / MAX_NUMBER_OF_ELEMENTS_PER_PAGE)))
 	{
-		this->setLocalElementsIconsAndPositions();
+		this->setLocalVisibleElementsIconsAndPositions();
 	}
 	this->resetSelectedElementIterator();
 }
@@ -597,16 +612,7 @@ void ConnectedState::getFtpElements()
 	const std::uint32_t fontSize = gui::calculateFontSize(this->window.getSize(), 16);
 	for(const std::string & element : elementsResponse.getListing())
 	{
-		if(element.length() > MAX_CHARACTERS_FOR_ELEMENT)
-		{
-			this->ftpElements.emplace_back(this->font, 
-			element.substr(0, MAX_CHARACTERS_FOR_ELEMENT - 3).append("..."), fontSize);
-		}
-		else
-		{
-			this->ftpElements.emplace_back(this->font, element, fontSize);
-		}
-		this->ftpElements.back().setFillColor(sf::Color(0, 0, 0));
+		this->ftpElements.emplace_back(element);
 	}
 	
 	std::size_t numberOfPages = static_cast <std::size_t>(std::ceil
@@ -633,22 +639,11 @@ void ConnectedState::getLocalElements()
 	this->localElementsPageNumber = 1;
 	this->localElements.clear();
 	const std::uint32_t fontSize = gui::calculateFontSize(this->window.getSize(), 16);
-	std::string elementName;
 
 	for(const std::filesystem::directory_entry & element 
 	: std::filesystem::directory_iterator(std::filesystem::current_path()))
 	{
-		elementName = element.path().filename().string();
-		if(elementName.length() > MAX_CHARACTERS_FOR_ELEMENT)
-		{
-			this->localElements.emplace_back(this->font, 
-			elementName.substr(0, MAX_CHARACTERS_FOR_ELEMENT - 3).append("..."), fontSize);
-		}
-		else
-		{
-			this->localElements.emplace_back(this->font, elementName, fontSize);
-		}
-		this->localElements.back().setFillColor(sf::Color(0, 0, 0));
+		this->localElements.emplace_back(element.path().filename().string());
 	}
 
 	std::size_t numberOfPages = static_cast <std::size_t>(std::ceil
@@ -663,9 +658,9 @@ void ConnectedState::getLocalElements()
 
 void ConnectedState::renameSelectedElement()
 {
-	if(this->selectedElementIterator == this->ftpElementsIteratorEnd
+	if(this->selectedElementIterator == this->ftpVisibleElements.end()
 	|| !this->isSelectedElementAnFtpElement 
-	|| this->checkIfElementIsFtpFolder(this->selectedElementIterator->getString()))
+	|| this->checkIfElementIsFtpFolder(* this->selectedElementIterator->iterator))
 	{
 		this->createErrorMessageBox("Not selected any ftp file to rename");
 		return;
@@ -679,17 +674,18 @@ void ConnectedState::renameSelectedElement()
 	}
 
 	sf::Ftp::Response response = this->ftpConenction.renameFile
-	(this->selectedElementIterator->getString().toAnsiString(), newName);
+	(* this->selectedElementIterator->iterator, newName);
 	if(!response.isOk())
 	{
 #if DEBUG_VERSION
 		std::cout << response.getMessage() << '\n';
 #endif
 		this->createErrorMessageBox("Can't rename file named: " 
-		+ this->selectedElementIterator->getString());
+		+ (* this->selectedElementIterator->iterator));
 		return;
 	}
-	this->selectedElementIterator->setString(newName);
+	* this->selectedElementIterator->iterator = newName;
+	this->selectedElementIterator->text.setString(newName);
 	this->resetSelectedElementIterator();
 }
 
@@ -703,7 +699,7 @@ void ConnectedState::render()
 	this->renderButtons();
 	this->renderTexts();
 
-	if(this->selectedElementIterator != this->ftpElementsIteratorEnd)
+	if(this->selectedElementIterator != this->ftpVisibleElements.end())
 	{
 		this->window.draw(this->selectedElementBackground);
 	}
@@ -725,10 +721,10 @@ void ConnectedState::renderButtons()
 void ConnectedState::renderFtpElements()
 {
 	std::int32_t i = 0;
-	for(std::list <sf::Text>::iterator it = this->ftpElementsIterator;
+	for(std::list <std::string>::iterator it = this->ftpElementsIterator;
 	it != this->ftpElementsIteratorEnd; ++it, ++i)
 	{
-		this->window.draw(* it);
+		this->window.draw(this->ftpVisibleElements[i].text);
 		window.draw(this->ftpElementsIcons[i]);
 	}
 }
@@ -736,10 +732,10 @@ void ConnectedState::renderFtpElements()
 void ConnectedState::renderLocalElements()
 {
 	std::int32_t i = 0;
-	for(std::list <sf::Text>::iterator it = this->localElementsIterator;
+	for(std::list <std::string>::iterator it = this->localElementsIterator;
 	it != this->localElementsIteratorEnd; ++it, ++i)
 	{
-		this->window.draw(* it);
+		this->window.draw(this->localVisibleElements[i].text);
 		window.draw(this->localElementsIcons[i]);
 	}
 }
@@ -754,7 +750,7 @@ void ConnectedState::renderTexts()
 
 void ConnectedState::resetSelectedElementIterator()
 {
-	this->selectedElementIterator = this->ftpElementsIteratorEnd;
+	this->selectedElementIterator = this->ftpVisibleElements.end();
 }
 
 void ConnectedState::setCurrentFtpPageText()
@@ -783,22 +779,31 @@ void ConnectedState::setCurrentLocalPageText()
 	+ '/' + std::to_string(numberOfPages));
 }
 
-void ConnectedState::setFtpElementsIconsAndPositions()
+void ConnectedState::setFtpVisibleElementsIconsAndPositions()
 {
 	sf::Vector2f position = gui::calculatePercentageVector(window.getSize(), {55.f, 10.f});
 	const float valueAddedToMoveIcon = static_cast <float>
 	(gui::calculateFontSize(this->window.getSize(), 16)) / 4.f
 	+ gui::calculatePercentageVector(this->window.getSize(), {3.f, 5.f}).y;
-
-	std::list <sf::Text>::iterator copyOfIterator = this->ftpElementsIterator;
+	std::list <std::string>::iterator copyOfIterator = this->ftpElementsIterator;
 
 	for(std::int32_t i = 0; i < MAX_NUMBER_OF_ELEMENTS_PER_PAGE
 	&& copyOfIterator != this->ftpElements.end(); ++i, ++copyOfIterator)
 	{
-		copyOfIterator->setPosition(position);
+		if(copyOfIterator->length() > MAX_CHARACTERS_FOR_ELEMENT)
+		{
+			this->ftpVisibleElements[i].text.setString(copyOfIterator->substr
+			(0, MAX_CHARACTERS_FOR_ELEMENT - 3) + "...");
+		}
+		else
+		{
+			this->ftpVisibleElements[i].text.setString(* copyOfIterator);
+		}
+		this->ftpVisibleElements[i].text.setPosition(position);
+		this->ftpVisibleElements[i].iterator = copyOfIterator;
 		position.y += valueAddedToMoveIcon;
 
-		if(this->checkIfElementIsFtpFolder(copyOfIterator->getString()))
+		if(this->checkIfElementIsFtpFolder(* copyOfIterator))
 		{
 			this->ftpElementsIcons[i].setTexture(& this->folderIcon);
 		}
@@ -834,23 +839,33 @@ void ConnectedState::setIconsPositionsAndSizes()
 	}
 }
 
-void ConnectedState::setLocalElementsIconsAndPositions()
+void ConnectedState::setLocalVisibleElementsIconsAndPositions()
 {
 	sf::Vector2f position = gui::calculatePercentageVector(window.getSize(), {5.f, 10.f});
 	const float valueAddedToMoveIcon = static_cast <float>
 	(gui::calculateFontSize(this->window.getSize(), 16)) / 4.f
 	+ gui::calculatePercentageVector(this->window.getSize(), {3.f, 5.f}).y;
-
-	std::list <sf::Text>::iterator copyOfIterator = this->localElementsIterator;
+	std::list <std::string>::iterator copyOfIterator = this->localElementsIterator;
 
 	for(std::int32_t i = 0; i < MAX_NUMBER_OF_ELEMENTS_PER_PAGE
 	&& copyOfIterator != this->localElements.end(); ++i, ++copyOfIterator)
 	{
-		copyOfIterator->setPosition(position);
+		if(copyOfIterator->length() > MAX_CHARACTERS_FOR_ELEMENT)
+		{
+			this->localVisibleElements[i].text.setString(copyOfIterator->substr
+			(0, MAX_CHARACTERS_FOR_ELEMENT - 3) + "...");
+		}
+		else
+		{
+			this->localVisibleElements[i].text.setString(*copyOfIterator);
+		}
+		
+		this->localVisibleElements[i].text.setPosition(position);
+		this->localVisibleElements[i].iterator = copyOfIterator;
 		position.y += valueAddedToMoveIcon;
 
 		if(std::filesystem::is_directory(std::filesystem::current_path().string()
-		+ DIRECTORY_SEPARATOR + copyOfIterator->getString().toAnsiString()))
+		+ DIRECTORY_SEPARATOR + (* copyOfIterator)))
 		{
 			this->localElementsIcons[i].setTexture(&this->folderIcon);
 		}
@@ -894,7 +909,7 @@ void ConnectedState::update(sf::Vector2f && mousePosition)
 
 void ConnectedState::uploadSelectedElementToFtpServer()
 {
-	if(this->selectedElementIterator == this->ftpElementsIteratorEnd
+	if(this->selectedElementIterator == this->ftpVisibleElements.end()
 	|| this->isSelectedElementAnFtpElement)
 	{
 		this->createErrorMessageBox("Not selected any local file");
@@ -902,7 +917,7 @@ void ConnectedState::uploadSelectedElementToFtpServer()
 	}
 
 	sf::Ftp::Response response = this->ftpConenction.upload
-	(this->selectedElementIterator->getString().toAnsiString(), "");
+	(* this->selectedElementIterator->iterator, "");
 	if(!response.isOk())
 	{
 #if DEBUG_VERSION
@@ -911,10 +926,8 @@ void ConnectedState::uploadSelectedElementToFtpServer()
 		this->createErrorMessageBox("Can't upload file");
 	}
 
-	this->ftpElements.emplace_back(this->font, this->selectedElementIterator->getString(),
-	gui::calculateFontSize(this->window.getSize(), 16));
-	this->ftpElements.back().setFillColor(sf::Color(0, 0, 0));
-	this->setFtpElementsIconsAndPositions();
+	this->ftpElements.emplace_back(* this->selectedElementIterator->iterator);
+	this->setFtpVisibleElementsIconsAndPositions();
 	this->setCurrentFtpPageText();
 	this->resetSelectedElementIterator();
 }

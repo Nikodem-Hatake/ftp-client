@@ -14,10 +14,10 @@ class State
 	std::stack <std::unique_ptr <State>> & states;
 
 	public:
-	virtual void render();
+	virtual void render() = 0;
 	State(sf::RenderWindow & window, sf::Font & font,
 	std::stack <std::unique_ptr <State>> & states);
-	virtual void update(sf::Vector2f && mousePosition);
+	virtual void update(sf::Vector2f && mousePosition) = 0;
 };
 
 #endif

@@ -45,6 +45,16 @@ class ConnectedState : public State
 		currentLocalPageText
 	};
 
+	struct VisibleElement
+	{
+		sf::Text text;
+		std::list <std::string>::iterator iterator;
+		VisibleElement(const sf::Text & text) : text(text), iterator()
+		{
+			
+		}
+	};
+
 	std::array <sf::RectangleShape, MAX_NUMBER_OF_ELEMENTS_PER_PAGE> ftpElementsIcons;
 	std::array <sf::RectangleShape, MAX_NUMBER_OF_ELEMENTS_PER_PAGE> localElementsIcons;
 	std::array <sf::Text, 4> texts;
@@ -55,13 +65,15 @@ class ConnectedState : public State
 	sf::Texture fileIcon;
 	sf::Texture folderIcon;
 	std::vector <Button> buttons;
-	std::list <sf::Text> ftpElements;
-	std::list <sf::Text> localElements;
-	std::list <sf::Text>::iterator ftpElementsIterator;
-	std::list <sf::Text>::iterator ftpElementsIteratorEnd;
-	std::list <sf::Text>::iterator localElementsIterator;
-	std::list <sf::Text>::iterator localElementsIteratorEnd;
-	std::list <sf::Text>::iterator selectedElementIterator;
+	std::list <std::string> ftpElements;
+	std::list <std::string> localElements;
+	std::vector <VisibleElement> ftpVisibleElements;
+	std::vector <VisibleElement> localVisibleElements;
+	std::list <std::string>::iterator ftpElementsIterator;
+	std::list <std::string>::iterator ftpElementsIteratorEnd;
+	std::list <std::string>::iterator localElementsIterator;
+	std::list <std::string>::iterator localElementsIteratorEnd;
+	std::vector <VisibleElement>::iterator selectedElementIterator;
 	std::unique_ptr <MessageBox> errorMessageBox;
 	sf::Ftp & ftpConenction;
 	char32_t & keyPressed;
@@ -84,6 +96,7 @@ class ConnectedState : public State
 	void createLines();
 	void createNewDirectory();
 	void createTexts();
+	void createVisibleTexts();
 	void deleteSelectedElement();
 	void downloadSelectedElement();
 	void getFtpElements();
@@ -96,9 +109,9 @@ class ConnectedState : public State
 	void resetSelectedElementIterator();
 	void setCurrentFtpPageText();
 	void setCurrentLocalPageText();
-	void setFtpElementsIconsAndPositions();
+	void setFtpVisibleElementsIconsAndPositions();
 	void setIconsPositionsAndSizes();
-	void setLocalElementsIconsAndPositions();
+	void setLocalVisibleElementsIconsAndPositions();
 	void uploadSelectedElementToFtpServer();
 
 	public:
